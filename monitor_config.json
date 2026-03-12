@@ -1,0 +1,29 @@
+{
+  "cpu": {
+    "warn_percent": 85,
+    "interval_sec": 2
+  },
+  "memory": {
+    "warn_percent": 85
+  },
+  "disk": {
+    "warn_percent": 85,
+    "mounts": ["/", "/data", "/home"]
+  },
+  "file_integrity": {
+    "watch_dirs": ["/etc", "/usr/bin", "/usr/sbin"],
+    "baseline_path": "/var/lib/monitor_hosts/baseline.json",
+    "exclude_patterns": ["*.log", "*.cache", ".git"]
+  },
+  "process": {
+    "expected_names": ["sshd", "nginx", "redis-server"],
+    "must_running": true
+  },
+  "port": {
+    "expected_ports": [22, 80, 443, 6379]
+  },
+  "log": {
+    "path": "/var/log/monitor_hosts.log",
+    "level": "INFO"
+  }
+}

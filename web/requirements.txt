@@ -1,0 +1,5 @@
+# Web 后端依赖（Python 2.7）
+# 安装: pip install -r monitor_hosts/web/requirements.txt
+Flask==1.1.2
+Werkzeug>=0.15,<2.0
+Jinja2>=2.10,<3.0

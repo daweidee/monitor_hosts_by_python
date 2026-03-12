@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>监控概览 - Monitor Hosts</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px; color: #333; background: #eef1f5; }
+    .layout { display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 200px; min-width: 180px; flex-shrink: 0; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
+    .nav-btn { display: block; width: 100%; padding: 12px 14px; margin-bottom: 6px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; font-size: 14px; font-weight: 500; color: #475569; cursor: pointer; text-align: left; }
+    .nav-btn:hover { background: #f1f5f9; color: #1e293b; border-color: #cbd5e1; }
+    .nav-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .sidebar-head { flex-shrink: 0; padding: 14px 16px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; font-weight: 600; font-size: 15px; color: #1e293b; }
+    .sidebar-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+    .card-head { padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    .card-body { padding: 10px 12px; }
+    .form-row { margin-bottom: 8px; }
+    .form-row:last-child { margin-bottom: 0; }
+    .form-row label { display: block; font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 3px; }
+    .form-row input[type="text"], .form-row input[type="number"], .form-row textarea, .form-row select { width: 100%; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; }
+    .form-row textarea { min-height: 56px; resize: vertical; font-family: inherit; }
+    .form-row input[type="number"] { max-width: 80px; }
+    .form-row .hint { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .form-row input[type="checkbox"] { margin-right: 6px; vertical-align: middle; }
+    .card-switch { border-left: 3px solid #2563eb; }
+    .main-head { margin-bottom: 16px; flex-shrink: 0; }
+    .main-head h1 { margin: 0 0 4px; font-size: 20px; font-weight: 600; color: #1e293b; }
+    .main-head .sub { font-size: 13px; color: #64748b; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-success { background: #059669; color: #fff; }
+    .btn-success:hover { background: #047857; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    #msg { padding: 10px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; display: none; }
+    #msg.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    #msg.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .result-panel { flex: 1; min-height: 200px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+    .result-tabs { display: flex; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+    .result-tab { padding: 10px 16px; font-size: 13px; font-weight: 500; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .result-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+    .result-tab:hover { color: #1e293b; }
+    .result-body { flex: 1; overflow: auto; padding: 14px; }
+    .result-body pre { margin: 0; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: #334155; }
+    .alerts-list { margin: 0; padding-left: 18px; }
+    .alerts-list li { margin: 6px 0; font-size: 13px; }
+    .alerts-list .host-tag { display: inline-block; padding: 1px 6px; border-radius: 4px; background: #e2e8f0; font-size: 11px; color: #475569; margin-right: 6px; }
+    .alerts-section { margin-bottom: 16px; }
+    .alerts-section h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #b91c1c; }
+    .results-section h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #166534; }
+    .empty-state { color: #94a3b8; font-size: 13px; text-align: center; padding: 40px 20px; }
+    .save-bar { flex-shrink: 0; padding: 10px 12px; background: #f1f5f9; border-top: 1px solid #e2e8f0; }
+    .main { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; padding: 20px; }
+    .main .actions { flex-shrink: 0; }
+    #msg { flex-shrink: 0; }
+    .result-panel { flex: 1; min-height: 0; }
+    .target-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+    .target-row input { padding: 4px 6px; font-size: 12px; width: 80px; }
+    .target-row input.host { width: 100px; }
+    .target-row .config-tag { font-size: 11px; color: #64748b; }
+    .target-row .btn-small { padding: 4px 8px; font-size: 12px; }
+    .modal-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; display: none; align-items: center; justify-content: center; }
+    .modal-mask.show { display: flex; }
+    .modal-box { background: #fff; border-radius: 8px; max-width: 520px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+    .modal-box.modal-wide { max-width: 560px; }
+    .modal-box.modal-override { max-width: 540px; }
+    .modal-head { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; font-size: 14px; }
+    .modal-body { overflow-y: auto; padding: 12px; }
+    .modal-foot { padding: 10px 16px; border-top: 1px solid #e2e8f0; text-align: right; }
+    .modal-override-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; }
+    .modal-override-row:last-child { border-bottom: none; }
+    .modal-override-label { width: 80px; flex-shrink: 0; font-weight: 600; font-size: 13px; color: #475569; }
+    .modal-override-fields { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .modal-override-fields label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #64748b; white-space: nowrap; margin: 0; }
+    .modal-override-fields input[type="number"] { width: 64px; padding: 4px 6px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 13px; }
+    .modal-override-fields input[type="text"] { width: 140px; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 13px; }
+    .modal-override-fields textarea { min-width: 120px; width: 180px; min-height: 36px; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 13px; resize: vertical; }
+    .modal-override-fields input[type="checkbox"] { margin: 0; }
+    .modal-override-fields label.field-with-ta { display: inline-flex; align-items: center; gap: 6px; }
+    .modal-override-fields label.field-with-ta textarea { flex: 1; min-width: 80px; }
+    #modalOverrideBox.modal-override .modal-body { padding: 14px 16px; }
+    .main-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; }
+    .main-tab { padding: 10px 20px; font-size: 14px; font-weight: 500; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .main-tab:hover { color: #1e293b; }
+    .main-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+    .main-view { display: none; }
+    .main-view.active { display: block; }
+    .view-title { margin: 0 0 8px; font-size: 18px; font-weight: 600; color: #1e293b; }
+    .view-desc { font-size: 13px; color: #64748b; margin-bottom: 16px; }
+    .target-page-section { margin-bottom: 20px; }
+    .target-page-section .card-head { margin-bottom: 0; }
+    .target-table-wrap { overflow-x: auto; }
+    .target-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .target-table th, .target-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    .target-table th { background: #f8fafc; color: #475569; font-weight: 600; }
+    .target-table .col-actions { white-space: nowrap; }
+    /* 增加监控机器页 */
+    #view-machines .view-desc { margin-bottom: 20px; }
+    #view-machines .machine-section { margin-bottom: 24px; }
+    #view-machines .machine-section .card { margin-bottom: 0; }
+    #view-machines .machine-section-title { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 10px; }
+    #view-machines .opts-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px 20px; align-items: center; max-width: 560px; }
+    #view-machines .opts-row .form-row { margin-bottom: 0; }
+    #view-machines .opts-row .form-row label { margin-bottom: 4px; }
+    #view-machines .opts-row .full { grid-column: 1 / -1; }
+    @media (max-width: 520px) { #view-machines .opts-row { grid-template-columns: 1fr; } }
+    #view-machines .target-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+    #view-machines .target-toolbar .btn { margin: 0; }
+    #view-machines .target-table { font-size: 13px; table-layout: fixed; width: 100%; border-collapse: collapse; }
+    #view-machines .target-table tr.target-row { display: table-row; flex-wrap: nowrap; margin-bottom: 0; }
+    #view-machines .target-table tr.target-row td { display: table-cell; }
+    #view-machines .target-table th,
+    #view-machines .target-table td { padding: 10px 12px; text-align: left; vertical-align: middle; border-bottom: 1px solid #e2e8f0; box-sizing: border-box; overflow: hidden; }
+    #view-machines .target-table th { background: #f8fafc; color: #475569; font-weight: 600; font-size: 12px; }
+    #view-machines .target-table tbody td { min-height: 44px; vertical-align: middle; }
+    #view-machines .target-table col.col-host { width: 20%; }
+    #view-machines .target-table col.col-port { width: 80px; }
+    #view-machines .target-table col.col-user { width: 80px; }
+    #view-machines .target-table col.col-key { width: 20%; }
+    #view-machines .target-table col.col-metrics { width: 76px; }
+    #view-machines .target-table col.col-actions { width: 220px; }
+    #view-machines .target-table th:nth-child(5), #view-machines .target-table td:nth-child(5) { text-align: center; }
+    #view-machines .target-table th:nth-child(6), #view-machines .target-table td:nth-child(6) { text-align: right; padding-right: 16px; }
+    #view-machines .target-table td input { width: 100%; min-width: 0; max-width: 100%; height: 32px; padding: 0 8px; line-height: 32px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 13px; box-sizing: border-box; vertical-align: middle; }
+    #view-machines .target-table td input[type="number"] { width: 100%; }
+    #view-machines .target-table .config-tag { display: inline-block; font-size: 11px; color: #64748b; padding: 4px 8px; line-height: 1; background: #f1f5f9; border-radius: 4px; vertical-align: middle; }
+    #view-machines .target-table td.col-actions, #view-machines .target-table td:last-child { white-space: nowrap; }
+    #view-machines .target-table td:last-child { display: table-cell; }
+    #view-machines .target-table td:last-child .btn-small { margin-left: 8px; height: 32px; line-height: 30px; padding: 0 12px; vertical-align: middle; }
+    #view-machines .target-table td:last-child .btn-small:first-child { margin-left: 0; }
+    #view-machines #target_list_wrap .target-table-wrap { padding: 12px 16px; }
+    #view-machines .target-empty { text-align: center; padding: 32px 16px; color: #94a3b8; font-size: 13px; border: 1px dashed #e2e8f0; border-radius: 8px; background: #fafbfc; }
+    #view-machines .target-empty .btn { margin-top: 12px; }
+    /* 指标详情页布局 */
+    #view-detail .view-desc { margin-bottom: 24px; }
+    #view-detail .detail-section { margin-bottom: 28px; }
+    #view-detail .detail-section-title { font-size: 11px; font-weight: 600; color: #94a3b8; letter-spacing: 0.05em; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0; }
+    #view-detail .detail-section-title:first-child { margin-top: 0; }
+    #view-detail .detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    @media (max-width: 720px) { #view-detail .detail-grid { grid-template-columns: 1fr; } }
+    #view-detail .detail-grid .card { margin-bottom: 0; }
+    #view-detail .card-body { padding: 14px 16px; }
+    #view-detail .card-head { padding: 10px 16px; font-size: 13px; }
+    #view-detail .form-row { margin-bottom: 10px; }
+    #view-detail .form-row:last-child { margin-bottom: 0; }
+    #view-detail .card-switch { margin-bottom: 24px; }
+    #view-detail .card-log { grid-column: 1 / -1; max-width: 400px; }
+    #view-alerts .alert-test-msg { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; }
+    #view-alerts .alert-test-msg.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    #view-alerts .alert-test-msg.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    /* 监控概览首页 */
+    #view-dashboard .dashboard-summary { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+    #view-dashboard .summary-card { background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); color: #fff; padding: 14px 20px; border-radius: 8px; min-width: 140px; box-shadow: 0 2px 8px rgba(37,99,235,0.2); }
+    #view-dashboard .summary-card .summary-label { display: block; font-size: 12px; opacity: 0.9; margin-bottom: 4px; }
+    #view-dashboard .summary-card .summary-value { font-size: 18px; font-weight: 600; }
+    #view-dashboard .dashboard-section-title { font-size: 14px; font-weight: 600; color: #475569; margin: 20px 0 12px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0; }
+    #view-dashboard .host-metrics-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+    #view-dashboard .host-metrics-card .host-name { background: #f8fafc; padding: 10px 14px; font-weight: 600; color: #1e293b; border-bottom: 1px solid #e2e8f0; }
+    #view-dashboard .host-metrics-card .host-body { padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    #view-dashboard .metric-item { background: #f8fafc; padding: 10px 12px; border-radius: 6px; font-size: 13px; }
+    #view-dashboard .metric-item .metric-name { color: #64748b; margin-bottom: 4px; }
+    #view-dashboard .metric-item .metric-value { font-weight: 600; color: #1e293b; }
+    #view-dashboard .metric-item.warn .metric-value { color: #b91c1c; }
+    #view-dashboard .metric-item.ok .metric-value { color: #059669; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-head">功能</div>
+      <div class="sidebar-body">
+        <button type="button" class="nav-btn active" id="navDashboard" data-view="dashboard">监控概览</button>
+        <button type="button" class="nav-btn" id="navMachines" data-view="machines">增加服务器</button>
+        <button type="button" class="nav-btn" id="navDetail" data-view="detail">服务器监控项</button>
+        <button type="button" class="nav-btn" id="navAlerts" data-view="alerts">告警通知</button>
+      </div>
+      <div class="save-bar">
+        <button type="button" class="btn btn-primary" id="btnSave" style="width:100%">保存配置</button>
+      </div>
+    </aside>
+    <main class="main">
+      <div id="view-dashboard" class="main-view active">
+        <h2 class="view-title">监控数据概览</h2>
+        <p class="view-desc">展示最近一次监控结果，可执行一次监控或建立文件基线。</p>
+        <div class="dashboard-summary">
+          <div class="summary-card"><span class="summary-label">上次执行</span><span class="summary-value" id="lastRunAt">—</span></div>
+          <div class="summary-card"><span class="summary-label">告警数</span><span class="summary-value" id="lastAlertCount">0</span></div>
+          <div class="summary-card"><span class="summary-label">服务器数</span><span class="summary-value" id="serverCount">0</span></div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn btn-success" id="btnRun">执行一次监控</button>
+          <button type="button" class="btn btn-secondary" id="btnBuildBaseline">仅建立文件基线</button>
+        </div>
+        <div id="msg"></div>
+        <div class="dashboard-data" id="dashboardData">
+          <h3 class="dashboard-section-title">最近一次监控结果</h3>
+          <div id="lastRunHosts"></div>
+          <p id="lastRunEmpty" class="empty-state" style="display:none;">暂无监控数据，请先执行一次监控。</p>
+        </div>
+        <div class="result-panel">
+          <div class="result-tabs">
+            <span class="result-tab active" data-tab="alerts">告警</span>
+            <span class="result-tab" data-tab="data">采集结果</span>
+          </div>
+          <div class="result-body">
+            <div id="result-alerts" class="result-content"></div>
+            <div id="result-data" class="result-content" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+      <div id="view-machines" class="main-view">
+        <h2 class="view-title">增加服务器</h2>
+        <p class="view-desc">添加需要监控的服务器：填写 IP、端口、私钥文件，并关联监控项；可对单台机器执行监控或删除。</p>
+        <div class="machine-section">
+          <div class="machine-section-title">运行模式与远程选项</div>
+          <div class="card">
+            <div class="card-body">
+              <div class="opts-row">
+                <div class="form-row"><label>模式</label><select id="target_mode"><option value="local" selected>本机</option><option value="remote">远程(SSH)</option></select></div>
+                <div class="form-row"><label>SSH 超时(秒)</label><input type="number" id="target_ssh_timeout" min="5" max="120" value="30"></div>
+                <div class="form-row full"><label>远程项目路径</label><input type="text" id="target_remote_project_path" placeholder="/opt/monitor_hosts"></div>
+                <div class="form-row full"><label>远程命令</label><input type="text" id="target_remote_command" placeholder="python monitor_hosts/main.py --json"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="machine-section">
+          <div class="target-toolbar">
+            <span class="machine-section-title" style="margin-bottom:0;">目标机器</span>
+            <button type="button" class="btn btn-primary" id="btnAddTarget">+ 添加目标</button>
+          </div>
+          <div id="target_list_wrap" class="card" style="display:none;">
+            <div class="target-table-wrap">
+              <table class="target-table">
+                <colgroup>
+                  <col class="col-host">
+                  <col class="col-port">
+                  <col class="col-user">
+                  <col class="col-key">
+                  <col class="col-metrics">
+                  <col class="col-actions">
+                </colgroup>
+                <thead><tr><th>主机</th><th>端口</th><th>用户</th><th>密钥文件</th><th>指标</th><th>操作</th></tr></thead>
+                <tbody id="target_list_container"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="target_empty_box" class="target-empty">
+            <p style="margin:0;">暂无监控目标</p>
+            <p style="margin:4px 0 0; font-size:12px;">点击「添加目标」新增服务器</p>
+            <button type="button" class="btn btn-primary" id="btnAddTargetEmpty">+ 添加目标</button>
+          </div>
+        </div>
+      </div>
+      <div id="view-detail" class="main-view">
+        <h2 class="view-title">服务器监控项</h2>
+        <p class="view-desc">配置基础监控项：CPU、内存、磁盘使用、系统文件篡改、多端口、多进程等。新增加的服务器将使用此默认配置，单机可在「增加服务器」中点击「关联指标」覆盖。</p>
+        <div class="card card-switch">
+          <div class="card-head">运行开关</div>
+          <div class="card-body">
+            <div class="form-row">
+              <label><input type="checkbox" id="monitoring_enabled" checked> 开启监控</label>
+              <span class="hint">关闭后不执行采集，仅可查看/修改配置</span>
+            </div>
+          </div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">资源类指标</div>
+          <div class="detail-grid">
+            <div class="card">
+              <div class="card-head">CPU</div>
+              <div class="card-body">
+                <div class="form-row"><label><input type="checkbox" id="cpu_enabled" checked> 启用</label></div>
+                <div class="form-row"><label>告警阈值 %</label><input type="number" id="cpu_warn_percent" min="1" max="100" value="85"></div>
+                <div class="form-row"><label>采样间隔(秒)</label><input type="number" id="cpu_interval_sec" min="1" max="10" value="2"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">内存</div>
+              <div class="card-body">
+                <div class="form-row"><label><input type="checkbox" id="memory_enabled" checked> 启用</label></div>
+                <div class="form-row"><label>告警阈值 %</label><input type="number" id="memory_warn_percent" min="1" max="100" value="85"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">磁盘</div>
+              <div class="card-body">
+                <div class="form-row"><label><input type="checkbox" id="disk_enabled" checked> 启用</label></div>
+                <div class="form-row"><label>告警阈值 %</label><input type="number" id="disk_warn_percent" min="1" max="100" value="85"></div>
+                <div class="form-row"><label>挂载点(每行一个)</label><textarea id="disk_mounts" placeholder="/&#10;/data"></textarea></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">业务类指标</div>
+          <div class="detail-grid">
+            <div class="card">
+              <div class="card-head">文件完整性</div>
+              <div class="card-body">
+                <div class="form-row"><label><input type="checkbox" id="file_integrity_enabled" checked> 启用</label></div>
+                <div class="form-row"><label>监控目录</label><textarea id="file_watch_dirs" placeholder="/etc&#10;/usr/bin" style="min-height:48px"></textarea></div>
+                <div class="form-row"><label>基线路径</label><input type="text" id="file_baseline_path" placeholder="/var/lib/monitor_hosts/baseline.json"></div>
+                <div class="form-row"><label>排除模式</label><textarea id="file_exclude_patterns" placeholder="*.log" style="min-height:40px"></textarea></div>
+                <div class="form-row"><label><input type="checkbox" id="file_use_mtime_only"> 仅 mtime+size</label></div>
+                <div class="form-row"><label><input type="checkbox" id="file_hash_only_if_changed" checked> 变更时才哈希</label></div>
+                <div class="form-row"><label>最大哈希大小(字节)</label><input type="number" id="file_max_file_size_to_hash" min="0" value="1048576"></div>
+                <div class="form-row"><label>最大文件数</label><input type="number" id="file_max_files" min="0" value="0" style="max-width:70px"></div>
+                <div class="form-row"><label>最大深度</label><input type="number" id="file_max_depth" min="0" value="0" style="max-width:70px"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">进程</div>
+              <div class="card-body">
+                <div class="form-row"><label><input type="checkbox" id="process_enabled" checked> 启用</label></div>
+                <div class="form-row"><label>期望进程名(每行一个)</label><textarea id="process_expected_names" placeholder="sshd&#10;nginx" style="min-height:48px"></textarea></div>
+                <div class="form-row"><label><input type="checkbox" id="process_must_running" checked> 至少一个在运行</label></div>
+                <div class="form-row"><label><input type="checkbox" id="process_use_light_check" checked> 轻量检查</label></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">端口</div>
+              <div class="card-body">
+                <div class="form-row"><label><input type="checkbox" id="port_enabled" checked> 启用</label></div>
+                <div class="form-row"><label>期望端口(每行或逗号)</label><textarea id="port_expected_ports" placeholder="22&#10;80&#10;443" style="min-height:48px"></textarea></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">日志</div>
+          <div class="detail-grid">
+            <div class="card card-log">
+              <div class="card-head">日志</div>
+              <div class="card-body">
+                <div class="form-row"><label>路径</label><input type="text" id="log_path" placeholder="/var/log/monitor_hosts.log"></div>
+                <div class="form-row"><label>级别</label><select id="log_level"><option value="DEBUG">DEBUG</option><option value="INFO" selected>INFO</option><option value="WARNING">WARNING</option><option value="ERROR">ERROR</option></select></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="view-alerts" class="main-view">
+        <h2 class="view-title">告警通知</h2>
+        <p class="view-desc">配置告警发送渠道，产生告警时将向已启用的渠道发送消息。修改后请点击左侧「保存配置」生效。可先填写配置后点击下方「发送测试消息」验证是否可达。</p>
+        <div id="alert_test_msg" class="alert-test-msg" style="display:none;"></div>
+        <div class="detail-section">
+          <div class="detail-section-title">发送测试消息</div>
+          <div class="detail-grid">
+            <div class="card">
+              <div class="card-body">
+                <p class="form-row" style="margin-bottom:12px;">使用当前页面填写的 Token / Chat ID / Webhook 发送一条测试消息（无需先保存配置）。</p>
+                <div class="actions">
+                  <button type="button" class="btn btn-secondary" id="btnTestTelegram">Telegram 测试</button>
+                  <button type="button" class="btn btn-secondary" id="btnTestLark">Lark 测试</button>
+                  <button type="button" class="btn btn-primary" id="btnTestAll">发送全部测试</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">通知渠道</div>
+          <div class="detail-grid">
+            <div class="card">
+              <div class="card-head">总开关</div>
+              <div class="card-body">
+                <div class="form-row">
+                  <label><input type="checkbox" id="alerts_notify_enabled"> 启用告警通知</label>
+                  <span class="hint">有告警时将发送到下方已启用的渠道（Telegram 群组 / Lark 群）</span>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">Telegram 群组</div>
+              <div class="card-body">
+                <div class="form-row"><label><input type="checkbox" id="telegram_enabled"> 启用 Telegram</label></div>
+                <div class="form-row"><label>Bot Token</label><input type="text" id="telegram_bot_token" placeholder="从 @BotFather 获取"></div>
+                <div class="form-row"><label>Chat ID（群组 ID）</label><input type="text" id="telegram_chat_id" placeholder="群组 ID，如 -1001234567890"></div>
+                <div class="form-row"><span class="hint">将机器人拉入群后，通过 getUpdates 或第三方工具获取 chat_id</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">Lark（飞书）</div>
+              <div class="card-body">
+                <div class="form-row"><label><input type="checkbox" id="lark_enabled"> 启用 Lark</label></div>
+                <div class="form-row"><label>Webhook URL</label><input type="text" id="lark_webhook_url" placeholder="群机器人 webhook 地址"></div>
+                <div class="form-row"><span class="hint">在飞书/ Lark 群设置 → 群机器人 → 自定义机器人 → 复制 webhook 地址</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-mask" id="modalOverride">
+    <div class="modal-box modal-wide modal-override" id="modalOverrideBox">
+      <div class="modal-head" id="modalOverrideTitle">关联监控指标（留空项使用默认配置）</div>
+      <div class="modal-body" id="modalOverrideBody"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-secondary" id="modalOverrideCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="modalOverrideSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function byId(id) { return document.getElementById(id); }
+    function showMsg(text, isError) {
+      var el = byId("msg");
+      el.className = "msg " + (isError ? "error" : "success");
+      el.textContent = text;
+      el.style.display = "block";
+    }
+    function renderAlerts(alerts) {
+      var wrap = byId("result-alerts");
+      if (!alerts || alerts.length === 0) {
+        wrap.innerHTML = '<p class="empty-state">暂无告警</p>';
+        return;
+      }
+      var html = '<div class="alerts-section"><h3>告警 (' + alerts.length + ')</h3><ul class="alerts-list">';
+      alerts.forEach(function(a) {
+        var host = a.host ? '<span class="host-tag">' + a.host + '</span>' : '';
+        html += '<li>' + host + '[' + (a.metric || '') + '] ' + (a.message || '') + '</li>';
+      });
+      html += '</ul></div>';
+      wrap.innerHTML = html;
+    }
+    function renderData(results) {
+      var wrap = byId("result-data");
+      if (!results || (typeof results === 'object' && Object.keys(results).length === 0)) {
+        wrap.innerHTML = '<p class="empty-state">暂无数据</p>';
+        return;
+      }
+      wrap.innerHTML = '<div class="results-section"><h3>结果 JSON</h3><pre>' + JSON.stringify(results, null, 2) + '</pre></div>';
+    }
+    function showResult(alerts, results) {
+      renderAlerts(alerts);
+      renderData(results);
+      byId("result-alerts").style.display = "block";
+      byId("result-data").style.display = "none";
+      document.querySelector('.result-tab[data-tab="alerts"]').classList.add("active");
+      document.querySelector('.result-tab[data-tab="data"]').classList.remove("active");
+    }
+    document.querySelectorAll('.result-tab').forEach(function(tab) {
+      tab.onclick = function() {
+        var t = this.getAttribute("data-tab");
+        document.querySelectorAll('.result-tab').forEach(function(x) { x.classList.remove("active"); });
+        this.classList.add("active");
+        byId("result-alerts").style.display = t === "alerts" ? "block" : "none";
+        byId("result-data").style.display = t === "data" ? "block" : "none";
+      };
+    });
+
+    var targetHosts = [];
+    var editingOverrideIndex = -1;
+
+    var METRIC_IDS = [
+      { key: "cpu", name: "CPU" },
+      { key: "memory", name: "内存" },
+      { key: "disk", name: "磁盘" },
+      { key: "file_integrity", name: "文件完整性" },
+      { key: "process", name: "进程" },
+      { key: "port", name: "端口" }
+    ];
+
+    function deepMerge(base, override) {
+      var out = {};
+      for (var k in base) if (base.hasOwnProperty(k)) out[k] = base[k];
+      for (var k in override) if (override.hasOwnProperty(k)) {
+        if (out[k] && typeof out[k] === "object" && !Array.isArray(out[k]) && override[k] && typeof override[k] === "object" && !Array.isArray(override[k]))
+          out[k] = deepMerge(out[k], override[k]);
+        else
+          out[k] = override[k];
+      }
+      return out;
+    }
+
+    function getDefaultConfigFromForm() {
+      var lines = function(id) {
+        var t = byId(id).value.trim();
+        return t ? t.split(/\n/).map(function(s) { return s.trim(); }).filter(Boolean) : [];
+      };
+      var portText = byId("port_expected_ports").value.trim().replace(/,/g, "\n");
+      var ports = portText ? portText.split(/\n/).map(function(s) { return parseInt(s.trim(), 10); }).filter(function(n) { return !isNaN(n); }) : [];
+      return {
+        cpu: { enabled: byId("cpu_enabled").checked },
+        memory: { enabled: byId("memory_enabled").checked },
+        disk: { enabled: byId("disk_enabled").checked },
+        file_integrity: { enabled: byId("file_integrity_enabled").checked },
+        process: { enabled: byId("process_enabled").checked },
+        port: { enabled: byId("port_enabled").checked, expected_ports: ports }
+      };
+    }
+
+    function getEnabledMetricNames(mergedConfig) {
+      var list = [];
+      METRIC_IDS.forEach(function(m) {
+        var section = mergedConfig[m.key];
+        if (section && section.enabled !== false) list.push(m.name);
+      });
+      return list;
+    }
+
+    function renderOneHostMetrics(hostLabel, data) {
+      var err = data.error;
+      if (err) {
+        return '<div class="host-metrics-card"><div class="host-name">' + (hostLabel || "主机").replace(/</g, "&lt;") + '</div><div class="host-body"><div class="metric-item warn"><span class="metric-name">错误</span><span class="metric-value">' + (err + "").replace(/</g, "&lt;") + '</span></div></div></div>';
+      }
+      var res = data.results || data;
+      var html = '<div class="host-metrics-card"><div class="host-name">' + (hostLabel || "本机").replace(/</g, "&lt;") + '</div><div class="host-body">';
+      function addMetric(name, value, isWarn) {
+        if (value == null) return;
+        var cls = isWarn ? "metric-item warn" : "metric-item";
+        html += '<div class="' + cls + '"><span class="metric-name">' + name + '</span><span class="metric-value">' + (value + "").replace(/</g, "&lt;") + '</span></div>';
+      }
+      if (res.cpu && res.cpu.usage_percent != null) addMetric("CPU 使用率", res.cpu.usage_percent + "%", res.cpu.usage_percent >= 85);
+      if (res.memory && res.memory.used_percent != null) addMetric("内存使用率", res.memory.used_percent + "%", res.memory.used_percent >= 85);
+      if (res.disk && Array.isArray(res.disk)) {
+        res.disk.forEach(function(d) {
+          var pct = d.used_percent != null ? d.used_percent : "-";
+          addMetric("磁盘 " + (d.mount || ""), (typeof pct === "number" ? pct + "%" : pct), typeof pct === "number" && pct >= 85);
+        });
+      }
+      if (res.process) {
+        var ok = res.process.ok;
+        var txt = ok ? "正常" : ("缺失: " + (res.process.missing || []).join(", "));
+        addMetric("进程", txt, !ok);
+      }
+      if (res.port) {
+        var ok = res.port.ok;
+        var txt = ok ? "正常" : ("未监听: " + (res.port.missing || []).join(", "));
+        addMetric("端口", txt, !ok);
+      }
+      if (res.file_integrity && res.file_integrity.alerts && res.file_integrity.alerts.length) addMetric("文件完整性", res.file_integrity.alerts.length + " 条变更", true);
+      else if (res.file_integrity && res.file_integrity.baseline_built) addMetric("文件完整性", "已建基线", false);
+      html += "</div></div>";
+      return html;
+    }
+
+    function renderLastRunHosts(results) {
+      var wrap = byId("lastRunHosts");
+      var emptyEl = byId("lastRunEmpty");
+      if (!wrap) return;
+      if (!results || (results.monitoring_disabled)) {
+        wrap.innerHTML = "";
+        if (emptyEl) emptyEl.style.display = "block";
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = "none";
+      if (results.hosts && typeof results.hosts === "object") {
+        var parts = [];
+        for (var h in results.hosts) if (results.hosts.hasOwnProperty(h)) parts.push(renderOneHostMetrics(h, results.hosts[h]));
+        wrap.innerHTML = parts.join("");
+      } else {
+        wrap.innerHTML = renderOneHostMetrics("本机", { results: results });
+      }
+    }
+
+    function loadLastRun() {
+      fetch("/api/last_run").then(function(r) { return r.json(); }).then(function(data) {
+        if (!data.ok) return;
+        var runAt = data.run_at || null;
+        var alerts = data.alerts || [];
+        var results = data.results || {};
+        byId("lastRunAt").textContent = runAt ? runAt : "—";
+        byId("lastAlertCount").textContent = alerts.length;
+        renderLastRunHosts(results);
+      }).catch(function() {});
+    }
+
+    function updateServerCount() {
+      var mode = (byId("target_mode") && byId("target_mode").value) ? byId("target_mode").value : "local";
+      var n = mode === "local" ? 1 : targetHosts.filter(function(h) { return (h.host || "").trim(); }).length;
+      var el = byId("serverCount");
+      if (el) el.textContent = n;
+    }
+
+    document.querySelectorAll(".nav-btn").forEach(function(btn) {
+      btn.onclick = function() {
+        var v = this.getAttribute("data-view");
+        document.querySelectorAll(".nav-btn").forEach(function(b) { b.classList.remove("active"); });
+        document.querySelectorAll(".main-view").forEach(function(x) { x.classList.remove("active"); });
+        this.classList.add("active");
+        byId("view-" + v).classList.add("active");
+        if (v === "dashboard") loadLastRun();
+      };
+    });
+
+    function renderTargetList() {
+      var tbody = byId("target_list_container");
+      var wrap = byId("target_list_wrap");
+      var emptyBox = byId("target_empty_box");
+      tbody.innerHTML = "";
+      if (targetHosts.length === 0) {
+        if (wrap) wrap.style.display = "none";
+        if (emptyBox) emptyBox.style.display = "block";
+        return;
+      }
+      if (wrap) wrap.style.display = "block";
+      if (emptyBox) emptyBox.style.display = "none";
+      targetHosts.forEach(function(h, i) {
+        var hasOverride = h.config_override && Object.keys(h.config_override).length > 0;
+        var tr = document.createElement("tr");
+        tr.className = "target-row";
+        tr.setAttribute("data-i", i);
+        tr.innerHTML =
+          '<td><input class="host" type="text" placeholder="IP或主机名" data-i="' + i + '" data-f="host" value="' + (h.host || "").replace(/"/g, "&quot;") + '"></td>' +
+          '<td><input type="number" placeholder="22" data-i="' + i + '" data-f="port" value="' + (h.port || 22) + '"></td>' +
+          '<td><input type="text" placeholder="root" data-i="' + i + '" data-f="user" value="' + (h.user || "root").replace(/"/g, "&quot;") + '"></td>' +
+          '<td><input type="text" placeholder="可选" data-i="' + i + '" data-f="key_file" value="' + (h.key_file || "").replace(/"/g, "&quot;") + '"></td>' +
+          '<td><span class="config-tag">' + (hasOverride ? "自定义" : "默认") + '</span></td>' +
+          '<td class="col-actions"><button type="button" class="btn btn-success btn-small" data-action="run" data-i="' + i + '">执行监控</button> <button type="button" class="btn btn-primary btn-small" data-action="edit" data-i="' + i + '">关联指标</button> <button type="button" class="btn btn-secondary btn-small" data-action="del" data-i="' + i + '">删除</button></td>';
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll("input").forEach(function(inp) {
+        inp.onchange = inp.onblur = function() {
+          var i = parseInt(this.getAttribute("data-i"), 10);
+          var f = this.getAttribute("data-f");
+          if (f === "port") targetHosts[i].port = parseInt(this.value, 10) || 22;
+          else targetHosts[i][f === "key_file" ? "key_file" : f] = this.value.trim();
+        };
+      });
+      tbody.querySelectorAll("[data-action=run]").forEach(function(btn) {
+        btn.onclick = function() { runOneHost(parseInt(btn.getAttribute("data-i"), 10)); };
+      });
+      tbody.querySelectorAll("[data-action=edit]").forEach(function(btn) {
+        btn.onclick = function() { openOverrideModal(parseInt(btn.getAttribute("data-i"), 10)); };
+      });
+      tbody.querySelectorAll("[data-action=del]").forEach(function(btn) {
+        btn.onclick = function() { targetHosts.splice(parseInt(btn.getAttribute("data-i"), 10), 1); renderTargetList(); };
+      });
+    }
+
+    function runOneHost(hostIndex) {
+      var cfg = formToConfig();
+      showMsg("正在保存配置并执行该主机监控…");
+      fetch("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) }).then(function(r) { return r.json(); }).then(function(saveRes) {
+        if (!saveRes.ok) { showMsg("保存失败: " + (saveRes.error || ""), true); return; }
+        return fetch("/api/run_host", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host_index: hostIndex }) });
+      }).then(function(r) { return r && r.json(); }).then(function(data) {
+        if (data && data.ok) {
+          showResult(data.alerts, data.results);
+          showMsg("该主机监控执行完成" + (data.alerts && data.alerts.length ? "，告警 " + data.alerts.length + " 条" : "，无告警"));
+          document.querySelectorAll(".nav-btn").forEach(function(b) { b.classList.remove("active"); });
+          document.querySelectorAll(".main-view").forEach(function(x) { x.classList.remove("active"); });
+          byId("navDashboard").classList.add("active");
+          byId("view-dashboard").classList.add("active");
+        } else if (data) showMsg("执行失败: " + (data.error || "未知"), true);
+      }).catch(function(e) { showMsg("请求失败: " + e.message, true); });
+    }
+
+    function addTarget() {
+      targetHosts.push({ host: "", port: 22, user: "root", key_file: "", config_override: {} });
+      renderTargetList();
+    }
+
+    function openOverrideModal(index) {
+      editingOverrideIndex = index;
+      var h = targetHosts[index];
+      byId("modalOverrideTitle").textContent = "关联监控指标: " + (h.host || "未填主机") + "（留空项使用默认配置）";
+      var o = h.config_override || {};
+      function ov(obj, key, subkey) {
+        if (!obj || !obj[key]) return ""; var v = obj[key][subkey]; return v != null ? v : "";
+      }
+      function ovArr(obj, key, subkey) {
+        if (!obj || !obj[key] || !obj[key][subkey]) return ""; return (obj[key][subkey] || []).join("\n");
+      }
+      function chk(obj, key, subkey) {
+        if (!obj || !obj[key]) return "checked";
+        return obj[key][subkey] !== false ? "checked" : "";
+      }
+      var html = '';
+      html += '<div class="modal-override-row"><span class="modal-override-label">CPU</span><div class="modal-override-fields">';
+      html += '<label><input type="checkbox" id="o_cpu_enabled" ' + chk(o,"cpu","enabled") + '> 启用</label>';
+      html += '<label>告警阈值 % <input type="number" id="o_cpu_warn" value="' + (o.cpu && o.cpu.warn_percent != null ? o.cpu.warn_percent : "") + '" placeholder="默认"></label>';
+      html += '<label>采样间隔(秒) <input type="number" id="o_cpu_interval" value="' + (o.cpu && o.cpu.interval_sec != null ? o.cpu.interval_sec : "") + '" placeholder="默认"></label></div></div>';
+
+      html += '<div class="modal-override-row"><span class="modal-override-label">内存</span><div class="modal-override-fields">';
+      html += '<label><input type="checkbox" id="o_mem_enabled" ' + chk(o,"memory","enabled") + '> 启用</label>';
+      html += '<label>告警阈值 % <input type="number" id="o_mem_warn" value="' + (o.memory && o.memory.warn_percent != null ? o.memory.warn_percent : "") + '" placeholder="默认"></label></div></div>';
+
+      html += '<div class="modal-override-row"><span class="modal-override-label">磁盘</span><div class="modal-override-fields">';
+      html += '<label><input type="checkbox" id="o_disk_enabled" ' + chk(o,"disk","enabled") + '> 启用</label>';
+      html += '<label>告警阈值 % <input type="number" id="o_disk_warn" value="' + (o.disk && o.disk.warn_percent != null ? o.disk.warn_percent : "") + '" placeholder="默认"></label>';
+      html += '<label class="field-with-ta">挂载点 <textarea id="o_disk_mounts" placeholder="留空用默认" rows="1">' + (o.disk && o.disk.mounts && o.disk.mounts.length ? o.disk.mounts.join("\n") : "") + '</textarea></label></div></div>';
+
+      html += '<div class="modal-override-row"><span class="modal-override-label">文件完整性</span><div class="modal-override-fields">';
+      html += '<label><input type="checkbox" id="o_file_enabled" ' + chk(o,"file_integrity","enabled") + '> 启用</label>';
+      html += '<label class="field-with-ta">监控目录 <textarea id="o_file_dirs" placeholder="留空用默认" rows="1">' + ovArr(o,"file_integrity","watch_dirs") + '</textarea></label>';
+      html += '<label>基线路径 <input type="text" id="o_file_baseline" value="' + (o.file_integrity && o.file_integrity.baseline_path ? o.file_integrity.baseline_path.replace(/"/g, "&quot;") : "") + '" placeholder="留空用默认"></label>';
+      html += '<label class="field-with-ta">排除 <textarea id="o_file_exclude" placeholder="留空用默认" rows="1">' + ovArr(o,"file_integrity","exclude_patterns") + '</textarea></label>';
+      html += '<label><input type="checkbox" id="o_file_mtime" ' + (o.file_integrity && o.file_integrity.use_mtime_only ? "checked" : "") + '> 仅mtime+size</label>';
+      html += '<label><input type="checkbox" id="o_file_hash_changed" ' + chk(o,"file_integrity","hash_only_if_changed") + '> 变更才哈希</label>';
+      html += '<label>最大哈希 <input type="number" id="o_file_max_size" value="' + (o.file_integrity && o.file_integrity.max_file_size_to_hash != null ? o.file_integrity.max_file_size_to_hash : "") + '" placeholder="默认" style="width:80px"></label>';
+      html += '<label>最大文件数 <input type="number" id="o_file_max_files" value="' + (o.file_integrity && o.file_integrity.max_files != null ? o.file_integrity.max_files : "") + '" placeholder="0" style="width:56px"></label>';
+      html += '<label>最大深度 <input type="number" id="o_file_max_depth" value="' + (o.file_integrity && o.file_integrity.max_depth != null ? o.file_integrity.max_depth : "") + '" placeholder="0" style="width:56px"></label></div></div>';
+
+      html += '<div class="modal-override-row"><span class="modal-override-label">进程</span><div class="modal-override-fields">';
+      html += '<label><input type="checkbox" id="o_process_enabled" ' + chk(o,"process","enabled") + '> 启用</label>';
+      html += '<label class="field-with-ta">期望进程名 <textarea id="o_process_names" placeholder="留空用默认" rows="1">' + (o.process && o.process.expected_names && o.process.expected_names.length ? o.process.expected_names.join("\n") : "") + '</textarea></label>';
+      html += '<label><input type="checkbox" id="o_process_must" ' + chk(o,"process","must_running") + '> 至少一个在运行</label>';
+      html += '<label><input type="checkbox" id="o_process_light" ' + chk(o,"process","use_light_check") + '> 轻量检查</label></div></div>';
+
+      html += '<div class="modal-override-row"><span class="modal-override-label">端口</span><div class="modal-override-fields">';
+      html += '<label><input type="checkbox" id="o_port_enabled" ' + chk(o,"port","enabled") + '> 启用</label>';
+      html += '<label class="field-with-ta">期望端口 <textarea id="o_ports" placeholder="留空用默认" rows="1">' + (o.port && o.port.expected_ports && o.port.expected_ports.length ? o.port.expected_ports.join("\n") : "") + '</textarea></label></div></div>';
+
+      byId("modalOverrideBody").innerHTML = html;
+      byId("modalOverride").classList.add("show");
+    }
+
+    function saveOverrideFromModal() {
+      if (editingOverrideIndex < 0) return;
+      var o = {};
+      var v;
+      v = byId("o_cpu_warn"); if (v) v = v.value.trim(); if (v) { o.cpu = o.cpu || {}; o.cpu.warn_percent = parseInt(v, 10); }
+      v = byId("o_cpu_interval"); if (v) v = v.value.trim(); if (v) { o.cpu = o.cpu || {}; o.cpu.interval_sec = parseInt(v, 10); }
+      if (!byId("o_cpu_enabled").checked) { o.cpu = o.cpu || {}; o.cpu.enabled = false; }
+      v = byId("o_mem_warn"); if (v) v = v.value.trim(); if (v) { o.memory = o.memory || {}; o.memory.warn_percent = parseInt(v, 10); }
+      if (!byId("o_mem_enabled").checked) { o.memory = o.memory || {}; o.memory.enabled = false; }
+      v = byId("o_disk_warn"); if (v) v = v.value.trim(); if (v) { o.disk = o.disk || {}; o.disk.warn_percent = parseInt(v, 10); }
+      v = byId("o_disk_mounts"); if (v) v = v.value.trim(); if (v) { o.disk = o.disk || {}; o.disk.mounts = v.split(/\n/).map(function(s) { return s.trim(); }).filter(Boolean); }
+      if (!byId("o_disk_enabled").checked) { o.disk = o.disk || {}; o.disk.enabled = false; }
+      v = byId("o_file_dirs"); if (v) v = v.value.trim(); if (v) { o.file_integrity = o.file_integrity || {}; o.file_integrity.watch_dirs = v.split(/\n/).map(function(s) { return s.trim(); }).filter(Boolean); }
+      v = byId("o_file_baseline"); if (v) v = v.value.trim(); if (v) { o.file_integrity = o.file_integrity || {}; o.file_integrity.baseline_path = v; }
+      v = byId("o_file_exclude"); if (v) v = v.value.trim(); if (v) { o.file_integrity = o.file_integrity || {}; o.file_integrity.exclude_patterns = v.split(/\n/).map(function(s) { return s.trim(); }).filter(Boolean); }
+      if (!byId("o_file_enabled").checked) { o.file_integrity = o.file_integrity || {}; o.file_integrity.enabled = false; }
+      if (byId("o_file_mtime").checked) { o.file_integrity = o.file_integrity || {}; o.file_integrity.use_mtime_only = true; }
+      if (!byId("o_file_hash_changed").checked) { o.file_integrity = o.file_integrity || {}; o.file_integrity.hash_only_if_changed = false; }
+      v = byId("o_file_max_size"); if (v) v = v.value.trim(); if (v) { o.file_integrity = o.file_integrity || {}; o.file_integrity.max_file_size_to_hash = parseInt(v, 10); }
+      v = byId("o_file_max_files"); if (v) v = v.value.trim(); if (v) { o.file_integrity = o.file_integrity || {}; o.file_integrity.max_files = parseInt(v, 10); }
+      v = byId("o_file_max_depth"); if (v) v = v.value.trim(); if (v) { o.file_integrity = o.file_integrity || {}; o.file_integrity.max_depth = parseInt(v, 10); }
+      v = byId("o_process_names"); if (v) v = v.value.trim(); if (v) { o.process = o.process || {}; o.process.expected_names = v.split(/\n/).map(function(s) { return s.trim(); }).filter(Boolean); }
+      if (!byId("o_process_enabled").checked) { o.process = o.process || {}; o.process.enabled = false; }
+      if (!byId("o_process_must").checked) { o.process = o.process || {}; o.process.must_running = false; }
+      if (!byId("o_process_light").checked) { o.process = o.process || {}; o.process.use_light_check = false; }
+      v = byId("o_ports"); if (v) v = v.value.trim().replace(/,/g, "\n"); if (v) { o.port = o.port || {}; o.port.expected_ports = v.split(/\n/).map(function(s) { return parseInt(s.trim(), 10); }).filter(function(n) { return !isNaN(n); }); }
+      if (!byId("o_port_enabled").checked) { o.port = o.port || {}; o.port.enabled = false; }
+      targetHosts[editingOverrideIndex].config_override = o;
+      editingOverrideIndex = -1;
+      byId("modalOverride").classList.remove("show");
+      renderTargetList();
+    }
+
+    byId("btnAddTarget").onclick = addTarget;
+    if (byId("btnAddTargetEmpty")) byId("btnAddTargetEmpty").onclick = addTarget;
+    byId("modalOverrideCancel").onclick = function() { byId("modalOverride").classList.remove("show"); editingOverrideIndex = -1; };
+    byId("modalOverrideSave").onclick = saveOverrideFromModal;
+
+    function formToConfig() {
+      var lines = function(id) {
+        var t = byId(id).value.trim();
+        return t ? t.split(/\n/).map(function(s) { return s.trim(); }).filter(Boolean) : [];
+      };
+      var rows = byId("target_list_container").querySelectorAll("tr.target-row");
+      for (var i = 0; i < rows.length; i++) {
+        if (!targetHosts[i]) continue;
+        var r = rows[i];
+        var hostInp = r.querySelector('input[data-f="host"]');
+        var portInp = r.querySelector('input[data-f="port"]');
+        var userInp = r.querySelector('input[data-f="user"]');
+        var keyInp = r.querySelector('input[data-f="key_file"]');
+        if (hostInp) targetHosts[i].host = hostInp.value.trim();
+        if (portInp) targetHosts[i].port = parseInt(portInp.value, 10) || 22;
+        if (userInp) targetHosts[i].user = userInp.value.trim() || "root";
+        if (keyInp) targetHosts[i].key_file = keyInp.value.trim();
+      }
+      var portText = byId("port_expected_ports").value.trim().replace(/,/g, "\n");
+      var ports = portText ? portText.split(/\n/).map(function(s) { return parseInt(s.trim(), 10); }).filter(function(n) { return !isNaN(n); }) : [];
+      var hosts = targetHosts.map(function(h) {
+        return {
+          host: (h.host || "").trim(),
+          port: h.port != null ? h.port : 22,
+          user: h.user || "root",
+          key_file: h.key_file || "",
+          config_override: h.config_override || {}
+        };
+      }).filter(function(h) { return h.host; });
+      var rp = byId("target_remote_project_path").value.trim();
+      var rc = byId("target_remote_command").value.trim();
+      return {
+        monitoring_enabled: byId("monitoring_enabled").checked,
+        cpu: { enabled: byId("cpu_enabled").checked, warn_percent: parseInt(byId("cpu_warn_percent").value, 10) || 85, interval_sec: parseInt(byId("cpu_interval_sec").value, 10) || 2 },
+        memory: { enabled: byId("memory_enabled").checked, warn_percent: parseInt(byId("memory_warn_percent").value, 10) || 85 },
+        disk: { enabled: byId("disk_enabled").checked, warn_percent: parseInt(byId("disk_warn_percent").value, 10) || 85, mounts: lines("disk_mounts").length ? lines("disk_mounts") : ["/"] },
+        file_integrity: {
+          enabled: byId("file_integrity_enabled").checked,
+          watch_dirs: lines("file_watch_dirs"),
+          baseline_path: byId("file_baseline_path").value.trim() || "/var/lib/monitor_hosts/baseline.json",
+          exclude_patterns: lines("file_exclude_patterns"),
+          use_mtime_only: byId("file_use_mtime_only").checked,
+          hash_only_if_changed: byId("file_hash_only_if_changed").checked,
+          max_file_size_to_hash: parseInt(byId("file_max_file_size_to_hash").value, 10) || 0,
+          max_files: parseInt(byId("file_max_files").value, 10) || 0,
+          max_depth: parseInt(byId("file_max_depth").value, 10) || 0
+        },
+        process: { enabled: byId("process_enabled").checked, expected_names: lines("process_expected_names"), must_running: byId("process_must_running").checked, use_light_check: byId("process_use_light_check").checked },
+        port: { enabled: byId("port_enabled").checked, expected_ports: ports.length ? ports : [22, 80, 443, 6379] },
+        target_hosts: { mode: byId("target_mode").value || "local", hosts: hosts, remote_project_path: rp || "/opt/monitor_hosts", remote_command: rc || "python monitor_hosts/main.py --json", ssh_timeout: parseInt(byId("target_ssh_timeout").value, 10) || 30 },
+        log: { path: byId("log_path").value.trim() || "/var/log/monitor_hosts.log", level: byId("log_level").value },
+        alerts_notify: {
+          enabled: byId("alerts_notify_enabled").checked,
+          telegram: { enabled: byId("telegram_enabled").checked, bot_token: (byId("telegram_bot_token") && byId("telegram_bot_token").value) ? byId("telegram_bot_token").value.trim() : "", chat_id: (byId("telegram_chat_id") && byId("telegram_chat_id").value) ? byId("telegram_chat_id").value.trim() : "" },
+          lark: { enabled: byId("lark_enabled").checked, webhook_url: (byId("lark_webhook_url") && byId("lark_webhook_url").value) ? byId("lark_webhook_url").value.trim() : "" }
+        }
+      };
+    }
+
+    function configToForm(cfg) {
+      if (!cfg) return;
+      byId("monitoring_enabled").checked = cfg.monitoring_enabled !== false;
+      if (cfg.cpu) { byId("cpu_enabled").checked = cfg.cpu.enabled !== false; byId("cpu_warn_percent").value = cfg.cpu.warn_percent != null ? cfg.cpu.warn_percent : 85; byId("cpu_interval_sec").value = cfg.cpu.interval_sec != null ? cfg.cpu.interval_sec : 2; }
+      if (cfg.memory) { byId("memory_enabled").checked = cfg.memory.enabled !== false; byId("memory_warn_percent").value = cfg.memory.warn_percent != null ? cfg.memory.warn_percent : 85; }
+      if (cfg.disk) { byId("disk_enabled").checked = cfg.disk.enabled !== false; byId("disk_warn_percent").value = cfg.disk.warn_percent != null ? cfg.disk.warn_percent : 85; byId("disk_mounts").value = (cfg.disk.mounts || []).join("\n"); }
+      if (cfg.file_integrity) {
+        byId("file_integrity_enabled").checked = cfg.file_integrity.enabled !== false;
+        byId("file_watch_dirs").value = (cfg.file_integrity.watch_dirs || []).join("\n");
+        byId("file_baseline_path").value = cfg.file_integrity.baseline_path || "";
+        byId("file_exclude_patterns").value = (cfg.file_integrity.exclude_patterns || []).join("\n");
+        byId("file_use_mtime_only").checked = cfg.file_integrity.use_mtime_only === true;
+        byId("file_hash_only_if_changed").checked = cfg.file_integrity.hash_only_if_changed !== false;
+        byId("file_max_file_size_to_hash").value = cfg.file_integrity.max_file_size_to_hash != null ? cfg.file_integrity.max_file_size_to_hash : 1048576;
+        byId("file_max_files").value = cfg.file_integrity.max_files != null ? cfg.file_integrity.max_files : 0;
+        byId("file_max_depth").value = cfg.file_integrity.max_depth != null ? cfg.file_integrity.max_depth : 0;
+      }
+      if (cfg.process) { byId("process_enabled").checked = cfg.process.enabled !== false; byId("process_expected_names").value = (cfg.process.expected_names || []).join("\n"); byId("process_must_running").checked = cfg.process.must_running !== false; byId("process_use_light_check").checked = cfg.process.use_light_check !== false; }
+      if (cfg.port) { byId("port_enabled").checked = cfg.port.enabled !== false; byId("port_expected_ports").value = (cfg.port.expected_ports || []).join("\n"); }
+      if (cfg.target_hosts) {
+        byId("target_mode").value = cfg.target_hosts.mode || "local";
+        targetHosts = (cfg.target_hosts.hosts || []).map(function(h) {
+          return {
+            host: h.host || "",
+            port: h.port != null ? h.port : 22,
+            user: h.user || "root",
+            key_file: h.key_file || "",
+            config_override: h.config_override || {}
+          };
+        });
+        renderTargetList();
+        byId("target_remote_project_path").value = cfg.target_hosts.remote_project_path || "";
+        byId("target_remote_command").value = cfg.target_hosts.remote_command || "";
+        byId("target_ssh_timeout").value = cfg.target_hosts.ssh_timeout != null ? cfg.target_hosts.ssh_timeout : 30;
+      }
+      if (cfg.log) { byId("log_path").value = cfg.log.path || ""; byId("log_level").value = cfg.log.level || "INFO"; }
+      var an = cfg.alerts_notify || {};
+      byId("alerts_notify_enabled").checked = an.enabled === true;
+      if (an.telegram) { byId("telegram_enabled").checked = an.telegram.enabled === true; byId("telegram_bot_token").value = an.telegram.bot_token || ""; byId("telegram_chat_id").value = an.telegram.chat_id || ""; }
+      if (an.lark) { byId("lark_enabled").checked = an.lark.enabled === true; byId("lark_webhook_url").value = an.lark.webhook_url || ""; }
+    }
+
+    function loadConfig() {
+      fetch("/api/config").then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok && data.config) {
+          configToForm(data.config);
+          updateServerCount();
+          loadLastRun();
+        } else showMsg("加载配置失败: " + (data.error || "未知"), true);
+      }).catch(function(e) { showMsg("请求失败: " + e.message, true); });
+    }
+
+    byId("btnSave").onclick = function() {
+      fetch("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formToConfig()) }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) { showMsg("配置已保存"); updateServerCount(); }
+        else showMsg("保存失败: " + (data.error || "未知"), true);
+      }).catch(function(e) { showMsg("请求失败: " + e.message, true); });
+    };
+
+    byId("btnRun").onclick = function() {
+      byId("result-alerts").innerHTML = ""; byId("result-data").innerHTML = "";
+      showMsg("执行中…");
+      fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) {
+          showResult(data.alerts, data.results);
+          loadLastRun();
+          if (data.message) showMsg(data.message); else showMsg(data.alerts && data.alerts.length ? "完成，共 " + data.alerts.length + " 条告警" : "执行完成，无告警");
+        } else showMsg("执行失败: " + (data.error || "未知"), true);
+      }).catch(function(e) { showMsg("请求失败: " + e.message, true); });
+    };
+
+    byId("btnBuildBaseline").onclick = function() {
+      showMsg("正在建立文件基线…");
+      fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ build_baseline: true }) }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) showMsg("文件基线已建立"); else showMsg("建立基线失败: " + (data.error || "未知"), true);
+      }).catch(function(e) { showMsg("请求失败: " + e.message, true); });
+    };
+
+    function showAlertTestMsg(text, isError) {
+      var el = byId("alert_test_msg");
+      if (!el) return;
+      el.textContent = text;
+      el.className = "alert-test-msg " + (isError ? "error" : "success");
+      el.style.display = "block";
+    }
+    function getAlertTestPayload(channel) {
+      var payload = { channel: channel };
+      if (channel === "telegram" || channel === "all") payload.telegram = { bot_token: (byId("telegram_bot_token") && byId("telegram_bot_token").value) ? byId("telegram_bot_token").value.trim() : "", chat_id: (byId("telegram_chat_id") && byId("telegram_chat_id").value) ? byId("telegram_chat_id").value.trim() : "" };
+      if (channel === "lark" || channel === "all") payload.lark = { webhook_url: (byId("lark_webhook_url") && byId("lark_webhook_url").value) ? byId("lark_webhook_url").value.trim() : "" };
+      return payload;
+    }
+    function runAlertTest(channel) {
+      var msgEl = byId("alert_test_msg");
+      if (msgEl) { msgEl.style.display = "none"; }
+      var payload = getAlertTestPayload(channel);
+      fetch("/api/alert_test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) {
+          var parts = [];
+          if (data.telegram === true) parts.push("Telegram 已发送");
+          if (data.lark === true) parts.push("Lark 已发送");
+          showAlertTestMsg(parts.length ? parts.join("；") + "，请到对应群内查看。" : "发送成功", false);
+        } else showAlertTestMsg("发送失败: " + (data.error || "未知"), true);
+      }).catch(function(e) { showAlertTestMsg("请求失败: " + e.message, true); });
+    }
+    if (byId("btnTestTelegram")) byId("btnTestTelegram").onclick = function() { runAlertTest("telegram"); };
+    if (byId("btnTestLark")) byId("btnTestLark").onclick = function() { runAlertTest("lark"); };
+    if (byId("btnTestAll")) byId("btnTestAll").onclick = function() { runAlertTest("all"); };
+
+    loadConfig();
+  </script>
+</body>
+</html>
