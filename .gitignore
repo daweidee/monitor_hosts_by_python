@@ -1,2 +1,60 @@
-data/*.db
+# 项目数据目录
+data/
 
+# Byte-compiled / optimized / DLL
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# 虚拟环境
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# 安装/打包
+build/
+dist/
+eggs/
+*.egg-info/
+*.egg
+.eggs/
+
+# 测试与覆盖率
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.hypothesis/
+nosetests.xml
+coverage.xml
+*.cover
+
+# 类型检查 / 静态分析
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# IDE / 编辑器
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 环境变量与本地配置（含敏感信息）
+.env
+.env.local
+*.local.json
+
+# 日志与临时文件
+*.log
+*.tmp
+*.temp
+.DS_Store
